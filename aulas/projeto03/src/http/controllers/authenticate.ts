@@ -1,7 +1,7 @@
+import { InvalidCredentialsError } from '@/services/errors/invalid-credentials-error'
+import { makeAuthenticateService } from '@/services/factories/make-authenticate-service'
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { z } from 'zod'
-import { InvalidCredentialsError } from '../services/errors/invalid-credentials-error'
-import { makeAuthenticateService } from '../services/factories/make-authenticate-service'
 
 export async function authenticate(
   request: FastifyRequest,
@@ -19,7 +19,20 @@ export async function authenticate(
     const authenticateService = makeAuthenticateService()
 
     // chama o método execute do RegisterService previamente instanciado
-    await authenticateService.execute({ email, password })
+    const { user } = await authenticateService.execute({ email, password })
+
+    // se der tudo certo, retorna JWT
+
+    const token = await reply.jwtSign(
+      {},
+      {
+        sign: {
+          sub: user.id,
+        },
+      },
+    )
+
+    reply.status(200).send({ token })
   } catch (error) {
     if (error instanceof InvalidCredentialsError) {
       return reply.status(400).send({ message: error.message })
@@ -27,6 +40,4 @@ export async function authenticate(
 
     throw error
   }
-
-  reply.status(200).send()
 }
